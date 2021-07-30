@@ -28,7 +28,8 @@ export class Server {
             const route = routes.find(r => r.match(request));
 
             if (route) {
-                request.respond(await route.response(request));
+                const response = await route.response(request);
+                if (response) request.respond(response);
             } else {
                 request.respond({
                     status: 400,

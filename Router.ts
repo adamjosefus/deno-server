@@ -12,7 +12,7 @@ export type RouteMatchCallback = {
 
 
 export type ResponseCallbackType = {
-    (request: ServerRequest): Promise<ServerResponse>
+    (request: ServerRequest): Promise<ServerResponse | void>
 }
 
 
