@@ -20,7 +20,6 @@ export type RouteMatchType =
 
 export type ResponseType =
     | ResponseCallbackType
-    | Response
     | Uint8Array
     | string;
 
