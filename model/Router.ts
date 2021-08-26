@@ -20,7 +20,6 @@ export type RouteMatchType =
 
 export type ResponseType =
     | ResponseCallbackType
-    | Response
     | Uint8Array
     | string;
 
@@ -32,7 +31,8 @@ export type RouteType = {
 
 
 export class Router {
-    private _routes: RouteType[] = []
+    private _standardRoutes: RouteType[] = [];
+    private _fallbackRoute: RouteType | null = null;
 
     private readonly webRoot: string;
 
@@ -115,12 +115,22 @@ export class Router {
 
 
     addRoute(match: RouteMatchType, response: ResponseType) {
-        const route: RouteType = {
+        const route = this._createRoute(match, response);
+        this._standardRoutes.push(route);
+    }
+
+
+    setFallbackRoute(match: RouteMatchType, response: ResponseType) {
+        const route = this._createRoute(match, response);
+        this._fallbackRoute = route;
+    }
+
+
+    private _createRoute(match: RouteMatchType, response: ResponseType): RouteType {
+        return {
             match: this._normalizeRouteMatch(match),
             response: this._normalizeResponse(response),
         };
-
-        this._routes.push(route);
     }
 
 
@@ -148,6 +158,10 @@ export class Router {
 
 
     getRoutes() {
-        return [...this._routes];
+        const arr = [...this._standardRoutes];
+
+        if (this._fallbackRoute) arr.push(this._fallbackRoute);
+
+        return arr;
     }
 }
