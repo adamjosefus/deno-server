@@ -1,0 +1,42 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Deno run",
+            "type": "shell",
+            "command": "deno run --import-map=import_map.json ./mod.ts",
+            "group": "build",
+            "problemMatcher": "$deno",
+            "options": {
+                "cwd": "${cwd}",
+            }
+        },
+        // {
+        //     "label": "PKG: Install",
+        //     "type": "shell",
+        //     "command": "./app/bin/macos_intel/pkg --c=./app/pkg.json --install",
+        //     "group": "build",
+        //     "options": {
+        //         "cwd": "${cwd}",
+        //     }
+        // },
+        // {
+        //     "label": "Delete current PKG",
+        //     "type": "shell",
+        //     "command": "./app/bin/macos_intel/pkg --c=./app/pkg.json --delete",
+        //     "group": "build",
+        //     "options": {
+        //         "cwd": "${cwd}",
+        //     }
+        // },
+        // {
+        //     "label": "PKG: Delete",
+        //     "type": "shell",
+        //     "command": "./app/bin/macos_intel/pkg --c=./app/pkg.json --delete",
+        //     "group": "build",
+        //     "options": {
+        //         "cwd": "${cwd}",
+        //     }
+        // }
+    ]
+}
