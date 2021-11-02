@@ -1,4 +1,4 @@
-import { join } from "https://deno.land/std/path/mod.ts";
+import { join } from '@denoland/path/mod.ts';
 
 
 export type RouteMatchCallback = {
@@ -13,6 +13,7 @@ export type ResponseCallbackType = {
 
 export type RouteMatchType =
     | RouteMatchCallback
+    | URLPattern
     | RegExp
     | string
     | RouteMatchType[];
@@ -65,6 +66,12 @@ export class Router {
             return (path) => this._computeRequestPath(path) == routePath;
         }
 
+        const processURLPattern = (pattern: URLPattern): RouteMatchCallback => {
+            return (path) => {
+                return pattern.test(this._computeRequestPath(path));
+            }
+        }
+
         const processRegExp = (regex: RegExp): RouteMatchCallback => {
             return (path) => {
                 regex.lastIndex = 0;
@@ -79,6 +86,9 @@ export class Router {
         } else if (typeof raw === 'string') {
             return processString(raw);
 
+        } else if (raw instanceof URLPattern) {
+            return processURLPattern(raw);
+
         } else if (raw instanceof RegExp) {
             return processRegExp(raw);
 
@@ -92,25 +102,18 @@ export class Router {
     }
 
 
-    private _normalizeResponse(raw: ResponseType): ResponseCallbackType {
-        if (typeof raw == 'string') {
-            return async (_path) => {
-                return await new Response(raw);
-            };
-        } else if (raw instanceof Uint8Array) {
-            return async (_path) => {
-                return await new Response(raw);
-            };
+    private _normalizeResponse(response: ResponseType): ResponseCallbackType {
+        if (typeof response == 'string') {
+            return async (_path) => await new Response(response);
 
-        } else if (raw instanceof Response) {
-            return async (_path) => {
-                return await raw;
-            };
+        } else if (response instanceof Uint8Array) {
+            return async (_path) => await new Response(response);
+
+        } else if (response instanceof Response) {
+            return async (_path) => await response;
         }
 
-        return async (path) => {
-            return await raw(this._computeRequestPath(path));
-        };
+        return async (_path) => await response(this._computeRequestPath(_path));
     }
 
 
