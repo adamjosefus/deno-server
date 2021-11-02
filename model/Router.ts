@@ -1,38 +1,43 @@
 import { join } from '@denoland/path/mod.ts';
 
 
-export type RouteMatchCallback = {
+export type RouteTestCallbackType = {
     (path: string): boolean
 }
 
 
-export type ResponseCallbackType = {
-    (path: string): Promise<Response> | Response
-}
+export type ResponseCallbackType =
+    | { (): Response }
+    | { (): Promise<Response> }
+    | { (path: string): Response }
+    | { (path: string): Promise<Response> }
+    | { (path: string, route: RouteInputType): Response }
+    | { (path: string, route: RouteInputType): Promise<Response> }
 
 
-export type RouteMatchType =
-    | RouteMatchCallback
+export type RouteInputType =
+    | RouteTestCallbackType
     | URLPattern
     | RegExp
     | string
-    | RouteMatchType[];
+    | RouteInputType[];
 
 
-export type ResponseType =
+export type RouteResponseType =
     | ResponseCallbackType
     | Uint8Array
     | string;
 
 
 export type RouteType = {
-    match: RouteMatchCallback,
+    input: RouteInputType,
+    test: RouteTestCallbackType,
     response: ResponseCallbackType,
 }
 
 
 export class Router {
-    private _standardRoutes: RouteType[] = [];
+    private _routes: RouteType[] = [];
     private _fallbackRoute: RouteType | null = null;
 
     private readonly webRoot: string;
@@ -60,19 +65,19 @@ export class Router {
     }
 
 
-    private _normalizeRouteMatch(raw: RouteMatchType): RouteMatchCallback {
-        const processString = (raw: string): RouteMatchCallback => {
+    private _createRouteTestCallback(input: RouteInputType): RouteTestCallbackType {
+        const processString = (raw: string): RouteTestCallbackType => {
             const routePath: string = this._normalizePath(raw);
             return (path) => this._computeRequestPath(path) == routePath;
         }
 
-        const processURLPattern = (pattern: URLPattern): RouteMatchCallback => {
+        const processURLPattern = (pattern: URLPattern): RouteTestCallbackType => {
             return (path) => {
                 return pattern.test(this._computeRequestPath(path));
             }
         }
 
-        const processRegExp = (regex: RegExp): RouteMatchCallback => {
+        const processRegExp = (regex: RegExp): RouteTestCallbackType => {
             return (path) => {
                 regex.lastIndex = 0;
                 return regex.test(this._computeRequestPath(path));
@@ -80,21 +85,21 @@ export class Router {
         }
 
 
-        if (typeof raw === 'function') {
-            return raw;
+        if (typeof input === 'function') {
+            return input;
 
-        } else if (typeof raw === 'string') {
-            return processString(raw);
+        } else if (typeof input === 'string') {
+            return processString(input);
 
-        } else if (raw instanceof URLPattern) {
-            return processURLPattern(raw);
+        } else if (input instanceof URLPattern) {
+            return processURLPattern(input);
 
-        } else if (raw instanceof RegExp) {
-            return processRegExp(raw);
+        } else if (input instanceof RegExp) {
+            return processRegExp(input);
 
-        } else if (raw instanceof Array) {
+        } else if (input instanceof Array) {
             return (path) => {
-                return raw.reduce((acc: boolean, r) => acc || this._normalizeRouteMatch(r)(path), false)
+                return input.reduce((acc: boolean, r) => acc || this._createRouteTestCallback(r)(path), false)
             };
         }
 
@@ -102,48 +107,45 @@ export class Router {
     }
 
 
-    private _normalizeResponse(response: ResponseType): ResponseCallbackType {
+    private _normalizeResponse(response: RouteResponseType): ResponseCallbackType {
         if (typeof response == 'string') {
-            return async (_path) => await new Response(response);
+            return async () => await new Response(response);
 
         } else if (response instanceof Uint8Array) {
-            return async (_path) => await new Response(response);
+            return async () => await new Response(response);
 
         } else if (response instanceof Response) {
-            return async (_path) => await response;
+            return async () => await response;
         }
 
-        return async (_path) => await response(this._computeRequestPath(_path));
+        return async (path: string, route: RouteInputType) => await response(this._computeRequestPath(path), route);
     }
 
 
-    addRoute(match: RouteMatchType, response: ResponseType) {
-        const route = this._createRoute(match, response);
-        this._standardRoutes.push(route);
+    addRoute(input: RouteInputType, response: RouteResponseType) {
+        const route = this._createRoute(input, response);
+        this._routes.push(route);
     }
 
 
-    setFallbackRoute(match: RouteMatchType, response: ResponseType) {
-        const route = this._createRoute(match, response);
+    setFallbackRoute(input: RouteInputType, response: RouteResponseType) {
+        const route = this._createRoute(input, response);
         this._fallbackRoute = route;
     }
 
 
-    private _createRoute(match: RouteMatchType, response: ResponseType): RouteType {
+    private _createRoute(input: RouteInputType, response: RouteResponseType): RouteType {
         return {
-            match: this._normalizeRouteMatch(match),
+            input: input,
+            test: this._createRouteTestCallback(input),
             response: this._normalizeResponse(response),
         };
     }
 
 
-    /**
-     * @apram `match`
-     * @apram `root`
-     */
-    addStaticFilesRoute(match: RouteMatchType, root = '/') {
+    addStaticFilesRoute(match: RouteInputType, dir = '/') {
         const response: ResponseCallbackType = async (url: string) => {
-            const path = join(root, url);
+            const path = join(dir, url);
 
             try {
                 return new Response(await Deno.readFileSync(path), {
@@ -161,7 +163,7 @@ export class Router {
 
 
     getRoutes() {
-        const arr = [...this._standardRoutes];
+        const arr = [...this._routes];
 
         if (this._fallbackRoute) arr.push(this._fallbackRoute);
 
