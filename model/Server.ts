@@ -42,7 +42,7 @@ export class Server {
 
 
     run() {
-        if (this._listener != null) return;
+        if (this._listener !== null) return;
 
         this._listener = Deno.listen(this._options);
         this._requestLoop();
