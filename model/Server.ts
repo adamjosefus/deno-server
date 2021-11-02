@@ -24,10 +24,10 @@ export class Server {
                 const httpConn = Deno.serveHttp(conn);
 
                 for await (const requestEvent of httpConn) {
-                    const route = routes.find(r => r.match(requestEvent.request.url));
+                    const route = routes.find(r => r.test(requestEvent.request.url));
 
                     if (route) {
-                        const response = await route.response(requestEvent.request.url);
+                        const response = await route.response(requestEvent.request.url, route.input);
                         if (response) requestEvent.respondWith(response);
 
                     } else {
