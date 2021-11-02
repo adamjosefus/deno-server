@@ -1,40 +1,53 @@
-import { join } from "https://deno.land/std/path/mod.ts";
+import { join } from '@denoland/path/mod.ts';
+import { getReasonPhrase as getStatusReasonPhrase } from "./Status.ts";
 
 
-export type RouteMatchCallback = {
+export type RouteTestCallbackType = {
     (path: string): boolean
 }
 
 
-export type ResponseCallbackType = {
-    (path: string): Promise<Response> | Response
-}
+export type ResponseCallbackType =
+    | { (): Response }
+    | { (): Promise<Response> }
+    | { (path: string): Response }
+    | { (path: string): Promise<Response> }
+    | { (path: string, route: RouteInputType): Response }
+    | { (path: string, route: RouteInputType): Promise<Response> }
 
 
-export type RouteMatchType =
-    | RouteMatchCallback
+export type RouteInputType =
+    | RouteTestCallbackType
+    | URLPattern
     | RegExp
     | string
-    | RouteMatchType[];
+    | RouteInputType[];
 
 
-export type ResponseType =
+export type RouteResponseType =
     | ResponseCallbackType
     | Uint8Array
     | string;
 
 
 export type RouteType = {
-    match: RouteMatchCallback,
+    input: RouteInputType,
+    test: RouteTestCallbackType,
     response: ResponseCallbackType,
 }
 
 
 export class Router {
-    private _standardRoutes: RouteType[] = [];
+    private _routes: RouteType[] = [];
     private _fallbackRoute: RouteType | null = null;
+    private _errors: {
+        status: number,
+        response: Response
+    }[] = [];
+
 
     private readonly webRoot: string;
+
 
     constructor(webRoot: string = '/') {
         this.webRoot = this._normalizePath(webRoot);
@@ -59,13 +72,19 @@ export class Router {
     }
 
 
-    private _normalizeRouteMatch(raw: RouteMatchType): RouteMatchCallback {
-        const processString = (raw: string): RouteMatchCallback => {
+    private _createTestCallback(input: RouteInputType): RouteTestCallbackType {
+        const processString = (raw: string): RouteTestCallbackType => {
             const routePath: string = this._normalizePath(raw);
             return (path) => this._computeRequestPath(path) == routePath;
         }
 
-        const processRegExp = (regex: RegExp): RouteMatchCallback => {
+        const processURLPattern = (pattern: URLPattern): RouteTestCallbackType => {
+            return (path) => {
+                return pattern.test(this._computeRequestPath(path));
+            }
+        }
+
+        const processRegExp = (regex: RegExp): RouteTestCallbackType => {
             return (path) => {
                 regex.lastIndex = 0;
                 return regex.test(this._computeRequestPath(path));
@@ -73,18 +92,21 @@ export class Router {
         }
 
 
-        if (typeof raw === 'function') {
-            return raw;
+        if (typeof input === 'function') {
+            return input;
 
-        } else if (typeof raw === 'string') {
-            return processString(raw);
+        } else if (typeof input === 'string') {
+            return processString(input);
 
-        } else if (raw instanceof RegExp) {
-            return processRegExp(raw);
+        } else if (input instanceof URLPattern) {
+            return processURLPattern(input);
 
-        } else if (raw instanceof Array) {
+        } else if (input instanceof RegExp) {
+            return processRegExp(input);
+
+        } else if (input instanceof Array) {
             return (path) => {
-                return raw.reduce((acc: boolean, r) => acc || this._normalizeRouteMatch(r)(path), false)
+                return input.reduce((acc: boolean, r) => acc || this._createTestCallback(r)(path), false)
             };
         }
 
@@ -92,64 +114,106 @@ export class Router {
     }
 
 
-    private _normalizeResponse(raw: ResponseType): ResponseCallbackType {
-        if (typeof raw == 'string') {
-            return async (_path) => {
-                return await new Response(raw);
-            };
-        } else if (raw instanceof Uint8Array) {
-            return async (_path) => {
-                return await new Response(raw);
-            };
+    private _normalizeResponse(response: RouteResponseType): ResponseCallbackType {
+        if (typeof response == 'string') {
+            return async () => await new Response(response);
 
-        } else if (raw instanceof Response) {
-            return async (_path) => {
-                return await raw;
-            };
+        } else if (response instanceof Uint8Array) {
+            return async () => await new Response(response);
+
+        } else if (response instanceof Response) {
+            return async () => await response;
         }
 
-        return async (path) => {
-            return await raw(this._computeRequestPath(path));
-        };
+        return async (path: string, route: RouteInputType) => await response(this._computeRequestPath(path), route);
     }
 
 
-    addRoute(match: RouteMatchType, response: ResponseType) {
-        const route = this._createRoute(match, response);
-        this._standardRoutes.push(route);
-    }
-
-
-    setFallbackRoute(match: RouteMatchType, response: ResponseType) {
-        const route = this._createRoute(match, response);
-        this._fallbackRoute = route;
-    }
-
-
-    private _createRoute(match: RouteMatchType, response: ResponseType): RouteType {
+    private _createRoute(input: RouteInputType, response: RouteResponseType): RouteType {
         return {
-            match: this._normalizeRouteMatch(match),
+            input: input,
+            test: this._createTestCallback(input),
             response: this._normalizeResponse(response),
         };
     }
 
 
     /**
-     * @apram `match`
-     * @apram `root`
+     * Přidá další routu do routeru.
+     * @param input
+     * @param response 
      */
-    addStaticFilesRoute(match: RouteMatchType, root = '/') {
-        const response: ResponseCallbackType = async (url: string) => {
-            const path = join(root, url);
+    addRoute(input: RouteInputType, response: RouteResponseType): void {
+        const route = this._createRoute(input, response);
+        this._routes.push(route);
+    }
+
+
+    /**
+     * Nastaví záložní routu, která se vykoná vždy jako poslední.
+     * @param input 
+     * @param response 
+     */
+    setFallbackRoute(input: RouteInputType, response: RouteResponseType): void {
+        const route = this._createRoute(input, response);
+        this._fallbackRoute = route;
+    }
+
+
+    /**
+     * Smaže záložní routu.
+     */
+    clearFallbackRoute(): void {
+        this._fallbackRoute = null;
+    }
+
+
+    addErrorResponse(status: number, response: Response): void {
+        const index = this._errors.findIndex(r => r.status === status);
+
+        if (index >= 0) this._errors.splice(index, 1);
+
+        this._errors.push({
+            status,
+            response
+        })
+    }
+
+
+    private _getErrorResponse(status: number): Response | null {
+        const error = this._errors.find(r => r.status === status);
+
+        if (error) {
+            return error.response;
+        } else {
+            return null;
+        }
+    }
+
+    getErrorResponse(status: number): Response {
+        const response = this._getErrorResponse(status);
+
+        if (response) {
+            return response;
+        } else {
+            return new Response(`${status}\n${getStatusReasonPhrase(status)}`, {
+                headers: { "Content-Type": "text/plain" },
+                status,
+            });
+        }
+    }
+
+
+    addStaticFilesRoute(match: RouteInputType, dir = '/'): void {
+        const response: ResponseCallbackType = async (path: string) => {
+            const filepath = join(dir, path);
 
             try {
-                return new Response(await Deno.readFileSync(path), {
+                return new Response(await Deno.readFileSync(filepath), {
                     status: 200,
                 });
             } catch (_error) {
-                return new Response("Not Found.", {
-                    status: 404,
-                });
+                return this.getErrorResponse(404);
             }
         }
 
@@ -158,10 +222,10 @@ export class Router {
 
 
     getRoutes() {
-        const arr = [...this._standardRoutes];
+        const routes = [...this._routes];
 
-        if (this._fallbackRoute) arr.push(this._fallbackRoute);
+        if (this._fallbackRoute) routes.push(this._fallbackRoute);
 
-        return arr;
+        return routes;
     }
 }

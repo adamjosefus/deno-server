@@ -24,16 +24,14 @@ export class Server {
                 const httpConn = Deno.serveHttp(conn);
 
                 for await (const requestEvent of httpConn) {
-                    const route = routes.find(r => r.match(requestEvent.request.url));
+                    const route = routes.find(r => r.test(requestEvent.request.url));
 
                     if (route) {
-                        const response = await route.response(requestEvent.request.url);
+                        const response = await route.response(requestEvent.request.url, route.input);
                         if (response) requestEvent.respondWith(response);
 
                     } else {
-                        requestEvent.respondWith(new Response("Bad Request\nNo route matched.", {
-                            status: 500,
-                        }));
+                        requestEvent.respondWith(this._router.getErrorResponse(404));
                     }
                 }
             })();
@@ -42,7 +40,7 @@ export class Server {
 
 
     run() {
-        if (this._listener != null) return;
+        if (this._listener !== null) return;
 
         this._listener = Deno.listen(this._options);
         this._requestLoop();
