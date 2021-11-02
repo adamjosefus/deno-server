@@ -31,9 +31,7 @@ export class Server {
                         if (response) requestEvent.respondWith(response);
 
                     } else {
-                        requestEvent.respondWith(new Response("Bad Request\nNo route matched.", {
-                            status: 500,
-                        }));
+                        requestEvent.respondWith(this._router.getErrorResponse(404));
                     }
                 }
             })();
