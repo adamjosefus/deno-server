@@ -2,26 +2,28 @@ import { join } from 'https://deno.land/std@0.113.0/path/mod.ts';
 import { getReasonPhrase as getStatusReasonPhrase } from "./Status.ts";
 
 
-export type RouteTestCallbackType = {
-    (path: string): boolean
+const enum Substitutes {
+    Host = '%host%'
 }
 
 
+export type TestCallbackType =
+    (url: string) => boolean;
+
+
 export type ResponseCallbackType =
-    | { (): Response }
-    | { (): Promise<Response> }
-    | { (path: string): Response }
-    | { (path: string): Promise<Response> }
-    | { (path: string, route: RouteInputType): Response }
-    | { (path: string, route: RouteInputType): Promise<Response> }
+    | { (): Response | Promise<Response> }
+    | { (url: string, route: URLPattern): Response | Promise<Response> }
 
 
 export type RouteInputType =
-    | RouteTestCallbackType
-    | URLPattern
-    | RegExp
     | string
-    | RouteInputType[];
+    | string[];
+
+
+type InputCallbackType =
+    (hostUrl: string) => URLPattern;
+
 
 
 export type RouteResponseType =
@@ -30,9 +32,9 @@ export type RouteResponseType =
     | string;
 
 
-export type RouteType = {
-    input: RouteInputType,
-    test: RouteTestCallbackType,
+type RouteType = {
+    input: InputCallbackType,
+    test: TestCallbackType,
     response: ResponseCallbackType,
 }
 
@@ -46,71 +48,110 @@ export class Router {
     }[] = [];
 
 
-    private readonly webRoot: string;
+    private readonly hostSufix: string;
 
 
-    constructor(webRoot: string = '/') {
-        this.webRoot = this._normalizePath(webRoot);
+    constructor(hostSufix: string = '') {
+        this.hostSufix = hostSufix.trim();
     }
 
 
-    private _computeRequestPath(url: string): string {
-        const urlParts = new URL(url);
-        const raw = urlParts.pathname;
+    computeHostUrl(url: string): string {
+        const { host, protocol } = new URL(url);
 
-        if (raw.startsWith(this.webRoot)) {
-            return this._normalizePath(raw.substring(this.webRoot.length));
+        const base = `${protocol}//${host}`;
+
+        if (this.hostSufix !== '') {
+            return `${base}/${this.hostSufix}`
+        } else {
+            return base;
         }
+    }
 
-        console.warn(`Url "${url}" not starts with web root "${this.webRoot}."`);
-        return url;
+
+    /**
+     * Přidá novou routu, nebo routy.
+     * @param mask 
+     * @param response 
+     */
+    addRoute(mask: string | string[], response: RouteResponseType): void {
+        const masks = Array.isArray(mask) ? mask : [mask];
+
+        masks.forEach(m => this._addRoute(m, response));
+    }
+
+
+    /**
+     * Nastaví záložní routu, která se vykoná vždy jako poslední.
+     * @param input 
+     * @param response 
+     */
+    setFallbackRoute(mask: string, response: RouteResponseType): void {
+        const route = this._createRoute(mask, response);
+        this._fallbackRoute = route;
+    }
+
+
+    /**
+     * Odstraní záložní routu.
+     */
+    removeFallbackRoute(): void {
+        this._fallbackRoute = null;
+    }
+
+
+    private _addRoute(mask: string, response: RouteResponseType): void {
+        const r = this._createRoute(mask, response);
+
+        this._routes.push(r);
+    }
+
+
+    private _createRoute(mask: string, response: RouteResponseType): RouteType {
+        const input = this._createRouteInput(this._normalizePath(mask));
+
+        return {
+            input,
+            test: (url: string): boolean => {
+                url = this._normalizePath(url);
+                const hostUrl = this.computeHostUrl(url);
+                const pattern = input(hostUrl);
+
+                return pattern.test(url);
+            },
+            response: this._normalizeResponse(response),
+        };
+    }
+
+
+    private _createRouteInput(mask: string): InputCallbackType {
+        return (hostUrl: string) => {
+            if (mask.includes(Substitutes.Host)) {
+                return new URLPattern(mask.replaceAll(Substitutes.Host, hostUrl));
+            } else {               
+                return new URLPattern(`${hostUrl}/${mask}`);
+            }
+        }
     }
 
 
     private _normalizePath(path: string): string {
-        return path.startsWith('/') ? path : `/${path}`;
-    }
+        return [
+            // Trim
+            (s: string) => s.trim(),
 
+            // Remove first "/"
+            (s: string) => {
+                if (s.startsWith('/') && !s.startsWith('//')) return s.substring(1);
+                return s;
+            },
 
-    private _createTestCallback(input: RouteInputType): RouteTestCallbackType {
-        const processString = (raw: string): RouteTestCallbackType => {
-            const routePath: string = this._normalizePath(raw);
-            return (path) => this._computeRequestPath(path) == routePath;
-        }
-
-        const processURLPattern = (pattern: URLPattern): RouteTestCallbackType => {
-            return (path) => {
-                return pattern.test(this._computeRequestPath(path));
-            }
-        }
-
-        const processRegExp = (regex: RegExp): RouteTestCallbackType => {
-            return (path) => {
-                regex.lastIndex = 0;
-                return regex.test(this._computeRequestPath(path));
-            }
-        }
-
-
-        if (typeof input === 'function') {
-            return input;
-
-        } else if (typeof input === 'string') {
-            return processString(input);
-
-        } else if (input instanceof URLPattern) {
-            return processURLPattern(input);
-
-        } else if (input instanceof RegExp) {
-            return processRegExp(input);
-
-        } else if (input instanceof Array) {
-            return (path) => {
-                return input.reduce((acc: boolean, r) => acc || this._createTestCallback(r)(path), false)
-            };
-        }
-
-        throw new Error("Unknow type of RouteMatchType.");
+            // Remove last "/"
+            (s: string) => {
+                if (s.endsWith('/')) return s.substring(0, s.length - 1);
+                return s;
+            },
+        ].reduce((s, fce) => fce(s), path);
     }
 
 
@@ -125,46 +166,7 @@ export class Router {
             return async () => await response;
         }
 
-        return async (path: string, route: RouteInputType) => await response(this._computeRequestPath(path), route);
-    }
-
-
-    private _createRoute(input: RouteInputType, response: RouteResponseType): RouteType {
-        return {
-            input: input,
-            test: this._createTestCallback(input),
-            response: this._normalizeResponse(response),
-        };
-    }
-
-
-    /**
-     * Přidá další routu do routeru.
-     * @param input
-     * @param response 
-     */
-    addRoute(input: RouteInputType, response: RouteResponseType): void {
-        const route = this._createRoute(input, response);
-        this._routes.push(route);
-    }
-
-
-    /**
-     * Nastaví záložní routu, která se vykoná vždy jako poslední.
-     * @param input 
-     * @param response 
-     */
-    setFallbackRoute(input: RouteInputType, response: RouteResponseType): void {
-        const route = this._createRoute(input, response);
-        this._fallbackRoute = route;
-    }
-
-
-    /**
-     * Smaže záložní routu.
-     */
-    clearFallbackRoute(): void {
-        this._fallbackRoute = null;
+        return response;
     }
 
 
@@ -190,11 +192,13 @@ export class Router {
         }
     }
 
+
     getErrorResponse(status: number): Response {
         const response = this._getErrorResponse(status);
 
         if (response) {
             return response;
+
         } else {
             return new Response(`${status}\n${getStatusReasonPhrase(status)}`, {
                 headers: { "Content-Type": "text/plain" },

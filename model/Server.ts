@@ -17,17 +17,20 @@ export class Server {
     private async _requestLoop() {
         if (this._listener === null) return;
 
-        const routes = this._router.getRoutes();
+        const router = this._router;
+        const routes = router.getRoutes();
 
         for await (const conn of this._listener) {
             (async () => {
                 const httpConn = Deno.serveHttp(conn);
 
                 for await (const requestEvent of httpConn) {
-                    const route = routes.find(r => r.test(requestEvent.request.url));
+                    const url = requestEvent.request.url;
+                    const hostUrl = router.computeHostUrl(url)
+                    const route = routes.find(r => r.test(url));
 
                     if (route) {
-                        const response = await route.response(requestEvent.request.url, route.input);
+                        const response = await route.response(url, route.input(hostUrl));
                         if (response) requestEvent.respondWith(response);
 
                     } else {
