@@ -39,13 +39,19 @@ export class Server {
     }
 
 
-    run() {
+    start() {
         if (this._listener !== null) return;
 
         this._listener = Deno.listen(this._options);
         this._requestLoop();
     }
 
+    /**
+     * @deprecated Use start() instead
+     */
+    run() {
+        this.start();
+    }
 
     close() {
         if (this._listener === null) return;
