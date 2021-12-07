@@ -4,7 +4,7 @@
         {
             "label": "Deno run",
             "type": "shell",
-            "command": "deno run --import-map=import_map.json ./mod.ts",
+            "command": "deno run ./mod.ts",
             "group": "build",
             "problemMatcher": "$deno",
             "options": {

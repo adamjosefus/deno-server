@@ -1,4 +1,4 @@
-import { join } from '@denoland/path/mod.ts';
+import { join } from 'https://deno.land/std@0.113.0/path/mod.ts';
 import { getReasonPhrase as getStatusReasonPhrase } from "./Status.ts";
 
 
