@@ -13,7 +13,9 @@ export type TestCallbackType =
 
 export type ResponseCallbackType =
     | { (): Response | Promise<Response> }
-    | { (url: string, route: URLPattern): Response | Promise<Response> }
+    | { (url: string): Response | Promise<Response> }
+    | { (url: string, pattern: URLPattern): Response | Promise<Response> }
+    | { (url: string, pattern: URLPattern, args: Record<string, string>): Response | Promise<Response> }
 
 
 export type RouteInputType =
@@ -21,7 +23,7 @@ export type RouteInputType =
     | string[];
 
 
-type InputCallbackType =
+type GetPatternCallbackType =
     (hostUrl: string) => URLPattern;
 
 
@@ -33,9 +35,9 @@ export type RouteResponseType =
 
 
 type RouteType = {
-    input: InputCallbackType,
+    getPattern: GetPatternCallbackType,
     test: TestCallbackType,
-    response: ResponseCallbackType,
+    getResponse: ResponseCallbackType,
 }
 
 
@@ -108,24 +110,24 @@ export class Router {
 
 
     private _createRoute(mask: string, response: RouteResponseType): RouteType {
-        const input = this._createRouteInput(this._normalizePath(mask));
+        const getPattern = this._createGetPatternCallback(this._normalizePath(mask));
 
         return {
-            input,
+            getPattern,
             test: (url: string): boolean => {
                 url = this._normalizePath(url);                
 
                 const hostUrl = this.computeHostUrl(url);
-                const pattern = input(hostUrl);
+                const pattern = getPattern(hostUrl);
 
                 return pattern.test(url);
             },
-            response: this._normalizeResponse(response),
+            getResponse: this._normalizeResponse(response),
         };
     }
 
 
-    private _createRouteInput(mask: string): InputCallbackType {
+    private _createGetPatternCallback(mask: string): GetPatternCallbackType {
         return (hostUrl: string) => {
             if (mask.includes(Substitutes.Host)) {
                 return new URLPattern(mask.replaceAll(Substitutes.Host, hostUrl));
@@ -232,5 +234,20 @@ export class Router {
         if (this._fallbackRoute) routes.push(this._fallbackRoute);
 
         return routes;
+    }
+
+    static convertURLPatternResultToArgs(result: URLPatternResult | null): Record<string, string> {
+        if (result === null) return {};
+
+        return {
+            ...result.protocol.groups,
+            ...result.username.groups,
+            ...result.password.groups,
+            ...result.hostname.groups,
+            ...result.port.groups,
+            ...result.pathname.groups,
+            ...result.search.groups,
+            ...result.hash.groups,
+        };
     }
 }
