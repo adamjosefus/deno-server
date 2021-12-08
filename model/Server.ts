@@ -288,21 +288,21 @@ export class Server {
     }
 
 
-    addStaticFilesRoute(mask: RouteMaskType, dir = '/'): void {
-        const response: RouteResponseCallbackType = async (path: string) => {
-            const filepath = join(dir, path);
+    // addStaticFilesRoute(mask: RouteMaskType, dir = '/'): void {
+    //     const response: RouteResponseCallbackType = async (path: string) => {
+    //         const filepath = join(dir, path);
 
-            try {
-                return new Response(await Deno.readFileSync(filepath), {
-                    status: 200,
-                });
-            } catch (_error) {
-                return this.getErrorResponse(404);
-            }
-        }
+    //         try {
+    //             return new Response(await Deno.readFileSync(filepath), {
+    //                 status: 200,
+    //             });
+    //         } catch (_error) {
+    //             return this.getErrorResponse(404);
+    //         }
+    //     }
 
-        this.addRoute(mask, response);
-    }
+    //     this.addRoute(mask, response);
+    // }
 
 
     private _getRoutes() {

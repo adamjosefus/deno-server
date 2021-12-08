@@ -17,8 +17,6 @@ server.addRoute('some-page', {
     body: "Nějaká stránka"
 });
 
-server.addStaticFilesRoute(/^.+\.(js|css|png|jpg)/, 'public');
-
 
 server.open();
 console.log(`HTTP Server listening on port "http://localhost:${httpPort}"...`);
