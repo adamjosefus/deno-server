@@ -27,14 +27,15 @@ export class Server {
 
                 for await (const requestEvent of httpConn) {
                     const url = requestEvent.request.url;
-                    const redirectResponse = this._createPrettyRedirectResponse(url);
+                    const hostUrl = router.computeHostUrl(url);
+
+                    const redirectResponse = this._createPrettyRedirectResponse(url, hostUrl);
 
                     if (redirectResponse) {
                         requestEvent.respondWith(redirectResponse);
                         continue;
                     }
 
-                    const hostUrl = router.computeHostUrl(url)
                     const route = routes.find(r => r.test(url));
 
                     if (route) {
@@ -52,7 +53,7 @@ export class Server {
     }
 
 
-    private _createPrettyRedirectResponse(url: string): Response | null {
+    private _createPrettyRedirectResponse(url: string, hostUrl: string): Response | null {
         let redirectIndex = 0;
         let target = url;
 
@@ -69,7 +70,7 @@ export class Server {
             }
         });
 
-        return redirectIndex > 0 ? response : null;
+        return target !== hostUrl && redirectIndex > 0 ? response : null;
     }
 
 
@@ -80,12 +81,6 @@ export class Server {
         this._requestLoop();
     }
 
-    /**
-     * @deprecated Use start() instead
-     */
-    run() {
-        this.start();
-    }
 
     close() {
         if (this._listener === null) return;
