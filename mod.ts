@@ -1,2 +1,2 @@
-export { Server } from "./model/Server.ts"
-export { Router } from "./model/Router.ts"
+export { Server, MaskSubstitutes } from "./model/Server.ts"
+export type { RouteTestCallbackType, RouteResponseCallbackType, RouteMaskType, RouteResponseType } from "./model/Server.ts"
