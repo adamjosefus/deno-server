@@ -38,7 +38,9 @@ export class Server {
                     const route = routes.find(r => r.test(url));
 
                     if (route) {
-                        const response = await route.response(url, route.input(hostUrl));
+                        const pattern = route.getPattern(hostUrl);
+                        const response = await route.getResponse(url, pattern, Router.convertURLPatternResultToArgs(pattern.exec(url)));
+
                         if (response) requestEvent.respondWith(response);
 
                     } else {
