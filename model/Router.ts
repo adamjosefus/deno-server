@@ -113,7 +113,8 @@ export class Router {
         return {
             input,
             test: (url: string): boolean => {
-                url = this._normalizePath(url);
+                url = this._normalizePath(url);                
+
                 const hostUrl = this.computeHostUrl(url);
                 const pattern = input(hostUrl);
 
