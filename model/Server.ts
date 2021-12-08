@@ -1,4 +1,5 @@
 import { Router } from "./Router.ts";
+import { Status } from "./Status.ts";
 
 
 export class Server {
@@ -26,6 +27,13 @@ export class Server {
 
                 for await (const requestEvent of httpConn) {
                     const url = requestEvent.request.url;
+                    const redirectResponse = this._createPrettyRedirectResponse(url);
+
+                    if (redirectResponse) {
+                        requestEvent.respondWith(redirectResponse);
+                        continue;
+                    }
+
                     const hostUrl = router.computeHostUrl(url)
                     const route = routes.find(r => r.test(url));
 
@@ -39,6 +47,27 @@ export class Server {
                 }
             })();
         }
+    }
+
+
+    private _createPrettyRedirectResponse(url: string): Response | null {
+        let redirectIndex = 0;
+        let target = url;
+
+        if (target.endsWith('/')) {
+            // Odtraní poslední lomítko
+            target = target.substring(0, target.length - 1);
+            redirectIndex++;
+        }
+
+        const response = new Response(undefined, {
+            status: Status.S301_MovedPermanently,
+            headers: {
+                'location': encodeURI(target),
+            }
+        });
+
+        return redirectIndex > 0 ? response : null;
     }
 
 
