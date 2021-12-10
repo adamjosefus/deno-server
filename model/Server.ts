@@ -208,8 +208,10 @@ export class Server {
         return (hostUrl: string) => {
             if (mask.includes(MaskSubstitutes.Host)) {
                 return new URLPattern(mask.replaceAll(MaskSubstitutes.Host, hostUrl));
-            } else {
+            } else if (mask !== '') {
                 return new URLPattern(`${hostUrl}/${mask}`);
+            } else {
+                return new URLPattern(`${hostUrl}`);
             }
         }
     }
@@ -286,23 +288,6 @@ export class Server {
             });
         }
     }
-
-
-    // addStaticFilesRoute(mask: RouteMaskType, dir = '/'): void {
-    //     const response: RouteResponseCallbackType = async (path: string) => {
-    //         const filepath = join(dir, path);
-
-    //         try {
-    //             return new Response(await Deno.readFileSync(filepath), {
-    //                 status: 200,
-    //             });
-    //         } catch (_error) {
-    //             return this.getErrorResponse(404);
-    //         }
-    //     }
-
-    //     this.addRoute(mask, response);
-    // }
 
 
     private _getRoutes() {
