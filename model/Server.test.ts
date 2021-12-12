@@ -1,11 +1,11 @@
 import { assertEquals } from "https://deno.land/std@0.117.0/testing/asserts.ts";
-import { Server } from "./Server.ts";
+import { Server, ServerOptions } from "./Server.ts";
 
 
 Deno.test({
     name: "Server.computeHostUrl",
     fn: () => {
-        const serverOptions: Deno.ListenOptions[] = [];
+        const serverOptions: ServerOptions[] = [];
 
         const ports = [8080, 80, 1234];
         const hostnames = ['localhost', '127.0.0.1', 'my-dns.net'];
@@ -36,6 +36,43 @@ Deno.test({
         });
     },
 });
+
+
+Deno.test({
+    name: "Server.computeHostUrl + rootShift",
+    fn: () => {
+        const serverOptions: ServerOptions[] = [];
+
+        const ports = [8080, 80, 1234];
+        const hostnames = ['localhost', '127.0.0.1', 'my-dns.net'];
+        const rootShifts = ['some', 'some/path'];
+
+        ports.forEach(port => {
+            hostnames.forEach(hostname => {
+                rootShifts.forEach(rootShift => {
+                    serverOptions.push({ hostname, port, rootShift })
+                });
+            });
+        });
+
+
+        serverOptions.forEach(_ => {
+            const { port, hostname, rootShift } = _;
+            const srv = new Server({ port, hostname, rootShift });
+
+            const expected = `http://${hostname}${port !== 80 ? `:${port}` : ''}/${rootShift}`;
+
+            assertEquals(srv.computeHostUrl(`http://${hostname}:${port}/some/path`), expected);
+            assertEquals(srv.computeHostUrl(`http://${hostname}:${port}/some/path/`), expected);
+            assertEquals(srv.computeHostUrl(`http://${hostname}:${port}/some/path/get-data`), expected);
+            assertEquals(srv.computeHostUrl(`http://${hostname}:${port}/some/path/get-data/`), expected);
+            assertEquals(srv.computeHostUrl(`http://${hostname}:${port}/some/path?query=123`), expected);
+            assertEquals(srv.computeHostUrl(`http://${hostname}:${port}/some/path/?query=123`), expected);
+        });
+    },
+});
+
+
 
 // Deno.test({
 //     name: "Compute HostURL II.",
