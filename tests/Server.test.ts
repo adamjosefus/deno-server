@@ -106,3 +106,35 @@ Deno.test({
     },
 });
 
+
+Deno.test({
+    name: "Server.computeClientUrl + webRoot",
+    fn: () => {
+        const serverOptions: ServerOptions[] = [];
+
+        const ports = [8080, 80, 1234];
+        const hostnames = ['localhost', '127.0.0.1', 'my-dns.net'];
+        const webRoots = ['some', 'some/path'];
+
+        ports.forEach(port => {
+            hostnames.forEach(hostname => {
+                webRoots.forEach(webRoot => {
+                    serverOptions.push({ hostname, port, webRoot })
+                });
+            });
+        });
+
+
+        serverOptions.forEach(_ => {
+            const { port, hostname, webRoot } = _;
+            const srv = new Server({ port, hostname, webRoot });
+
+
+            assertEquals(srv.computeClientUrl(`http://${hostname}:${port}/some/path`), '/some/path');
+            assertEquals(srv.computeClientUrl(`http://${hostname}:${port}/some/path/`), '/some/path');
+            assertEquals(srv.computeClientUrl(`http://${hostname}:${port}/some/path/get-data`), '/some/path/get-data');
+            assertEquals(srv.computeClientUrl(`http://${hostname}:${port}/some/path/get-data/`), '/some/path/get-data');
+            assertEquals(srv.computeClientUrl(`http://${hostname}:${port}/some/path?query=123`), '/some/path?query=123');
+        });
+    },
+});
