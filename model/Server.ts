@@ -7,6 +7,11 @@ export const enum MaskSubstitutes {
 }
 
 
+export interface ServerOptions extends Deno.ListenOptions {
+    hostpath?: string
+}
+
+
 export type RouteTestCallbackType =
     (url: string) => boolean;
 
@@ -55,7 +60,7 @@ export class Server {
     private readonly hostpath: string;
 
 
-    constructor(options: Deno.ListenOptions & { hostpath?: string }) {
+    constructor(options: ServerOptions) {
         this._options = options;
         this.hostpath = (options.hostpath ?? "").trim();
     }
