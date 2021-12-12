@@ -8,7 +8,7 @@ export const enum MaskSubstitutes {
 
 
 export interface ServerOptions extends Deno.ListenOptions {
-    rootShift?: string
+    webRoot?: string
 }
 
 
@@ -57,12 +57,17 @@ export class Server {
         response: Response
     }[] = [];
 
-    private readonly _rootShift: string;
+    private readonly _webRoot: string;
 
 
     constructor(options: ServerOptions) {
         this._options = options;
-        this._rootShift = this._normalizePath((options.rootShift ?? "").trim());
+        this._webRoot = this._normalizePath((options.webRoot ?? "").trim());
+    }
+
+
+    getWebRoot(): string {
+        return this._webRoot;
     }
 
 
@@ -77,7 +82,7 @@ export class Server {
 
                 for await (const requestEvent of httpConn) {
                     const url = requestEvent.request.url;
-                    const hostUrl = this.computeHostUrl(url);
+                    const hostUrl = this.computeServerHostUrl(url);
 
                     const redirectResponse = this._createPrettyRedirectResponse(url, hostUrl);
 
@@ -140,14 +145,22 @@ export class Server {
     }
 
 
-    computeHostUrl(url: string): string {
+    computeServerHostUrl(url: string): string {
         const { origin } = new URL(url);
 
-        if (this._rootShift !== '') {
-            return `${origin}/${this._rootShift}`
+        if (this._webRoot !== '') {
+            return `${origin}/${this._webRoot}`
         } else {
             return origin;
         }
+    }
+
+
+    /**
+     * @deprecated Use `computeServerHostUrl` instead
+     */
+    computeHostUrl(url: string): string {
+        return this.computeServerHostUrl(url);
     }
 
 
@@ -206,7 +219,7 @@ export class Server {
             test: (url: string): boolean => {
                 url = this._normalizePath(url);
 
-                const hostUrl = this.computeHostUrl(url);
+                const hostUrl = this.computeServerHostUrl(url);
                 const pattern = getPattern(hostUrl);
 
                 return pattern.test(url);
