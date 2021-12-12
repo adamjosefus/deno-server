@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.117.0/testing/asserts.ts";
-import { Server, ServerOptions } from "./Server.ts";
+import { Server, ServerOptions } from "../model/Server.ts";
 
 
 Deno.test({
