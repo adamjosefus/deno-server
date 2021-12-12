@@ -79,8 +79,8 @@ Deno.test({
     fn: () => {
         const serverOptions: ServerOptions[] = [];
 
-        const ports = [8080];
-        const hostnames = ['localhost'];
+        const ports = [8080, 80, 1234];
+        const hostnames = ['localhost', '127.0.0.1', 'my-dns.net'];
 
         ports.forEach(port => {
             hostnames.forEach(hostname => {
