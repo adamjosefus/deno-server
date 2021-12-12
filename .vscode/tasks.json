@@ -10,6 +10,16 @@
             "options": {
                 "cwd": "${cwd}",
             }
+        },
+        {
+            "label": "Deno test",
+            "type": "shell",
+            "command": "deno test",
+            "group": "build",
+            "problemMatcher": "$deno",
+            "options": {
+                "cwd": "${cwd}",
+            }
         }
     ]
 }
