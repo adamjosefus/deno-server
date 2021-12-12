@@ -1,4 +1,4 @@
-// import { join } from 'https://deno.land/std@0.117.0/path/mod.ts';
+import { join } from 'https://deno.land/std@0.117.0/path/mod.ts';
 import { Status, getReasonPhrase as getStatusReasonPhrase } from "./Status.ts";
 
 
@@ -172,9 +172,21 @@ export class Server {
         })(url);
 
         const hostUrl = this.computeServerHostUrl(url);
-        const clientUrl = this._normalizePath(url.substring(hostUrl.length));
-        
-        return `/${clientUrl}`;
+        const path = url.substring(hostUrl.length);
+
+        const clientUrl = (() => {
+            if (this._webRoot !== '') {
+                if (path.startsWith('?')) {
+                    return `${this._webRoot}${path}`;
+                } else {
+                    return join(this._webRoot, path);
+                }
+            } else {
+                return path;
+            }
+        })();
+
+        return '/' + this._normalizePath(clientUrl);
     }
 
 
