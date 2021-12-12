@@ -165,6 +165,12 @@ export class Server {
 
 
     computeClientUrl(url: string): string {
+        url = ((s) => {
+            const url = new URL(s);
+            if (url.port === '80') url.port = '';
+            return url.toString();
+        })(url);
+
         const hostUrl = this.computeServerHostUrl(url);
         const clientUrl = this._normalizePath(url.substring(hostUrl.length));
         
