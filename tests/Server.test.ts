@@ -102,7 +102,6 @@ Deno.test({
             assertEquals(srv.computeClientUrl(`http://${hostname}:${port}?query=123`), '/?query=123');
             assertEquals(srv.computeClientUrl(`http://${hostname}:${port}/?query=123`), '/?query=123');
             assertEquals(srv.computeClientUrl(`http://${hostname}:${port}/some-path?query=123`), '/some-path?query=123');
-            // assertEquals(srv.computePublicUrl(`http://${hostname}:${port}/some-path/?query=123`), '/some-path?query=123');
         });
     },
 });
