@@ -136,14 +136,12 @@ export class Server {
 
 
     computeHostUrl(url: string): string {
-        const { host, protocol } = new URL(url);
-
-        const base = `${protocol}//${host}`;
+        const { origin } = new URL(url);
 
         if (this.hostpath !== '') {
-            return `${base}/${this.hostpath}`
+            return `${origin}/${this.hostpath}`
         } else {
-            return base;
+            return origin;
         }
     }
 
