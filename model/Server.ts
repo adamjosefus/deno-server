@@ -1,9 +1,14 @@
-import { join } from 'https://deno.land/std@0.116.0/path/mod.ts';
+import { join } from 'https://deno.land/std@0.117.0/path/mod.ts';
 import { Status, getReasonPhrase as getStatusReasonPhrase } from "./Status.ts";
 
 
 export const enum MaskSubstitutes {
     Host = '%host%'
+}
+
+
+export interface ServerOptions extends Deno.ListenOptions {
+    webRoot?: string
 }
 
 
@@ -52,12 +57,17 @@ export class Server {
         response: Response
     }[] = [];
 
-    private readonly hostpath: string;
+    private readonly _webRoot: string;
 
 
-    constructor(options: Deno.ListenOptions & { hostpath?: string }) {
+    constructor(options: ServerOptions) {
         this._options = options;
-        this.hostpath = (options.hostpath ?? "").trim();
+        this._webRoot = this._normalizePath((options.webRoot ?? "").trim());
+    }
+
+
+    getWebRoot(): string {
+        return this._webRoot;
     }
 
 
@@ -72,7 +82,7 @@ export class Server {
 
                 for await (const requestEvent of httpConn) {
                     const url = requestEvent.request.url;
-                    const hostUrl = this.computeHostUrl(url);
+                    const hostUrl = this.computeServerHostUrl(url);
 
                     const redirectResponse = this._createPrettyRedirectResponse(url, hostUrl);
 
@@ -135,16 +145,48 @@ export class Server {
     }
 
 
-    computeHostUrl(url: string): string {
-        const { host, protocol } = new URL(url);
+    computeServerHostUrl(url: string): string {
+        const { origin } = new URL(url);
 
-        const base = `${protocol}//${host}`;
-
-        if (this.hostpath !== '') {
-            return `${base}/${this.hostpath}`
+        if (this._webRoot !== '') {
+            return `${origin}/${this._webRoot}`
         } else {
-            return base;
+            return origin;
         }
+    }
+
+
+    /**
+     * @deprecated Use `computeServerHostUrl` instead
+     */
+    computeHostUrl(url: string): string {
+        return this.computeServerHostUrl(url);
+    }
+
+
+    computeClientUrl(url: string): string {
+        url = ((s) => {
+            const url = new URL(s);
+            if (url.port === '80') url.port = '';
+            return url.toString();
+        })(url);
+
+        const hostUrl = this.computeServerHostUrl(url);
+        const path = url.substring(hostUrl.length);
+
+        const clientUrl = (() => {
+            if (this._webRoot !== '') {
+                if (path.startsWith('?')) {
+                    return `${this._webRoot}${path}`;
+                } else {
+                    return join(this._webRoot, path);
+                }
+            } else {
+                return path;
+            }
+        })();
+
+        return '/' + this._normalizePath(clientUrl);
     }
 
 
@@ -195,7 +237,7 @@ export class Server {
             test: (url: string): boolean => {
                 url = this._normalizePath(url);
 
-                const hostUrl = this.computeHostUrl(url);
+                const hostUrl = this.computeServerHostUrl(url);
                 const pattern = getPattern(hostUrl);
 
                 return pattern.test(url);

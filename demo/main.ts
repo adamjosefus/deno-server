@@ -8,8 +8,8 @@ server.addRoute('/', () => {
     return new Response("Homepage");
 })
 
-server.addRoute('demo', () => {
-    return new Response("Homepage / Demo");
+server.addRoute('id/:id', (_url, _pattern, { id }) => {
+    return new Response(`ID: ${id}`);
 })
 
 server.start();
