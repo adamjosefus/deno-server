@@ -151,6 +151,14 @@ export class Server {
     }
 
 
+    computeClientUrl(url: string): string {
+        const hostUrl = this.computeServerHostUrl(url);
+        const clientUrl = this._normalizePath(url.substring(hostUrl.length));
+        
+        return `/${clientUrl}`;
+    }
+
+
     /**
      * Přidá novou routu, nebo routy.
      * @param mask 
