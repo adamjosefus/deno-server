@@ -8,7 +8,7 @@ export const enum MaskSubstitutes {
 
 
 export interface ServerOptions extends Deno.ListenOptions {
-    hostpath?: string
+    rootShift?: string
 }
 
 
@@ -57,12 +57,12 @@ export class Server {
         response: Response
     }[] = [];
 
-    private readonly hostpath: string;
+    private readonly _rootShift: string;
 
 
     constructor(options: ServerOptions) {
         this._options = options;
-        this.hostpath = (options.hostpath ?? "").trim();
+        this._rootShift = this._normalizePath((options.rootShift ?? "").trim());
     }
 
 
@@ -143,8 +143,8 @@ export class Server {
     computeHostUrl(url: string): string {
         const { origin } = new URL(url);
 
-        if (this.hostpath !== '') {
-            return `${origin}/${this.hostpath}`
+        if (this._rootShift !== '') {
+            return `${origin}/${this._rootShift}`
         } else {
             return origin;
         }
