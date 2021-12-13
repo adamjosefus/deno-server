@@ -18,9 +18,9 @@ export type RouteTestCallbackType =
 
 export type RouteResponseCallbackType =
     | { (): Response | Promise<Response> }
-    | { (url: string): Response | Promise<Response> }
-    | { (url: string, pattern: URLPattern): Response | Promise<Response> }
-    | { (url: string, pattern: URLPattern, args: Record<string, string>): Response | Promise<Response> }
+    | { (request: Request): Response | Promise<Response> }
+    | { (request: Request, pattern: URLPattern): Response | Promise<Response> }
+    | { (request: Request, pattern: URLPattern, args: Record<string, string>): Response | Promise<Response> }
 
 
 export type RouteMaskType =
@@ -79,7 +79,8 @@ export class Server {
                 const httpConn = Deno.serveHttp(conn);
 
                 for await (const requestEvent of httpConn) {
-                    const url = requestEvent.request.url;
+                    const request = requestEvent.request;
+                    const url = request.url;
                     const hostUrl = this.computeServerHostUrl(url);
 
                     const redirectResponse = this._createPrettyRedirectResponse(url, hostUrl);
@@ -94,7 +95,8 @@ export class Server {
 
                     if (route) {
                         const pattern = route.getPattern(hostUrl);
-                        const response = await route.getResponse(url, pattern, this._convertURLPatternResultToArgs(pattern.exec(url)));
+                        const args = this._convertURLPatternResultToArgs(pattern.exec(url));
+                        const response = await route.getResponse(requestEvent.request, pattern, args);
 
                         if (response) requestEvent.respondWith(response);
 
