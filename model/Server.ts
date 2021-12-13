@@ -74,8 +74,6 @@ export class Server {
     private async _requestLoop() {
         if (this._listener === null) return;
 
-        const routes = this._getRoutes();
-
         for await (const conn of this._listener) {
             (async () => {
                 const httpConn = Deno.serveHttp(conn);
@@ -91,6 +89,7 @@ export class Server {
                         continue;
                     }
 
+                    const routes = this._getRoutes();
                     const route = routes.find(r => r.test(url));
 
                     if (route) {
