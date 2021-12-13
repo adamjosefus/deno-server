@@ -96,7 +96,7 @@ export class Server {
                     if (route) {
                         const pattern = route.getPattern(hostUrl);
                         const args = this._convertURLPatternResultToArgs(pattern.exec(url));
-                        const response = await route.getResponse(requestEvent.request, pattern, args);
+                        const response = await route.getResponse(request, pattern, args);
 
                         if (response) requestEvent.respondWith(response);
 
