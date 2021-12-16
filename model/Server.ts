@@ -356,4 +356,12 @@ export class Server {
             ...result.hash.groups,
         };
     }
+
+
+    static createJsonResponse<DataType>(data: DataType): Response {
+        const headers = new Headers();
+        headers.append("Content-Type", "application/json; charset=UTF-8");
+
+        return new Response(JSON.stringify(data, null, '  '), { headers });
+    }
 }
