@@ -364,4 +364,20 @@ export class Server {
 
         return new Response(JSON.stringify(data, null, '  '), { headers });
     }
+
+
+    static createTextResponse(text: string): Response {
+        const headers = new Headers();
+        headers.append("Content-Type", "text/plain;charset=UTF-8");
+
+        return new Response(text, { headers });
+    }
+
+
+    static createHtmlResponse(html: string): Response {
+        const headers = new Headers();
+        headers.append("Content-Type", "text/html; charset=UTF-8");
+
+        return new Response(html, { headers });
+    }
 }
