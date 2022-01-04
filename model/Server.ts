@@ -358,26 +358,26 @@ export class Server {
     }
 
 
-    static createJsonResponse<DataType>(data: DataType): Response {
+    static createJsonResponse<DataType>(data: DataType, status = Status.S200_Ok): Response {
         const headers = new Headers();
         headers.append("Content-Type", "application/json; charset=UTF-8");
 
-        return new Response(JSON.stringify(data, null, '  '), { headers });
+        return new Response(JSON.stringify(data, null, '  '), { headers, status });
     }
 
 
-    static createTextResponse(text: string): Response {
+    static createTextResponse(text: string, status = Status.S200_Ok): Response {
         const headers = new Headers();
         headers.append("Content-Type", "text/plain;charset=UTF-8");
 
-        return new Response(text, { headers });
+        return new Response(text, { headers, status });
     }
 
 
-    static createHtmlResponse(html: string): Response {
+    static createHtmlResponse(html: string, status = Status.S200_Ok): Response {
         const headers = new Headers();
         headers.append("Content-Type", "text/html; charset=UTF-8");
 
-        return new Response(html, { headers });
+        return new Response(html, { headers, status });
     }
 }
