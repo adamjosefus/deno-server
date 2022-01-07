@@ -1,3 +1,18 @@
-export { Server, MaskSubstitutes } from "./model/Server.ts"
-export type { RouteTestCallbackType, RouteResponseCallbackType, RouteMaskType, RouteResponseType } from "./model/Server.ts"
-export { Status, getReasonPhrase } from "./model/Status.ts"
+export {
+    Server,
+    MaskSubstitutes,
+    type RouteTestCallbackType,
+    type RouteResponseCallbackType,
+    type RouteMaskType,
+    type RouteResponseType,
+} from "./model/Server.ts"
+
+export {
+    Status,
+    getReasonPhrase,
+} from "./model/Status.ts"
+
+
+export {
+    Method,
+} from "./model/Method.ts"
