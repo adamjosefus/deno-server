@@ -1,3 +1,6 @@
+export type StatusType = Status | number;
+
+
 // deno-lint-ignore-file camelcase
 export const enum Status {
       S100_Continue = 100,
@@ -62,7 +65,7 @@ export const enum Status {
 }
 
 
-export function getReasonPhrase(status: number): string {
+export function getReasonPhrase(status: StatusType): string {
       switch (status) {
             case Status.S100_Continue:
                   return 'Continue';

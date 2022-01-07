@@ -1,5 +1,5 @@
 import { join } from 'https://deno.land/std@0.117.0/path/mod.ts';
-import { Status, getReasonPhrase as getStatusReasonPhrase } from "./Status.ts";
+import { type StatusType, Status, getReasonPhrase as getStatusReasonPhrase } from "./Status.ts";
 
 
 export const enum MaskSubstitutes {
@@ -295,7 +295,7 @@ export class Server {
     }
 
 
-    addErrorResponse(status: number, response: Response): void {
+    addErrorResponse(status: StatusType, response: Response): void {
         const index = this._errors.findIndex(r => r.status === status);
 
         if (index >= 0) this._errors.splice(index, 1);
@@ -307,7 +307,7 @@ export class Server {
     }
 
 
-    private _getErrorResponse(status: number): Response | null {
+    private _getErrorResponse(status: StatusType): Response | null {
         const error = this._errors.find(r => r.status === status);
 
         if (error) {
@@ -318,7 +318,7 @@ export class Server {
     }
 
 
-    getErrorResponse(status: number): Response {
+    getErrorResponse(status: StatusType): Response {
         const response = this._getErrorResponse(status);
 
         if (response) {
@@ -358,7 +358,7 @@ export class Server {
     }
 
 
-    static createJsonResponse<DataType>(data: DataType, status = Status.S200_Ok): Response {
+    static createJsonResponse<DataType>(data: DataType, status: StatusType = Status.S200_Ok): Response {
         const headers = new Headers();
         headers.append("Content-Type", "application/json; charset=UTF-8");
 
@@ -366,7 +366,7 @@ export class Server {
     }
 
 
-    static createTextResponse(text: string, status = Status.S200_Ok): Response {
+    static createTextResponse(text: string, status: StatusType = Status.S200_Ok): Response {
         const headers = new Headers();
         headers.append("Content-Type", "text/plain;charset=UTF-8");
 
@@ -374,10 +374,18 @@ export class Server {
     }
 
 
-    static createHtmlResponse(html: string, status = Status.S200_Ok): Response {
+    static createHtmlResponse(html: string, status: StatusType = Status.S200_Ok): Response {
         const headers = new Headers();
         headers.append("Content-Type", "text/html; charset=UTF-8");
 
         return new Response(html, { headers, status });
+    }
+
+
+    static createErrorResponse(status: StatusType, message?: string): Response {
+        const headers = new Headers();
+        headers.append("Content-Type", "text/plain;charset=UTF-8");
+
+        return new Response(message ?? getStatusReasonPhrase(status), { headers, status });
     }
 }
